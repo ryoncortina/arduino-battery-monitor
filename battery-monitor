@@ -1,0 +1,121 @@
+//SENSE
+bool batteryHealthy = false;
+bool starlinkCommand = false;
+
+const int batteryVin  = A0; //reads pin A0 (0-1023)
+const float adcReference = 4.57; //reference voltage from ADC
+const float dividerRatio  = 11.0; //divider ratio
+
+const float lowVoltageCutoff = 32.0;
+const float recoveryVoltage = 36.0;
+
+//CONTROLS
+
+const int startBtnPin = 3;
+const int stopBtnPin = 4;
+
+int startBtnState = HIGH;
+int stopBtnState = HIGH;
+
+//RELAY
+const int relay1Pin = 8;
+
+//STATUS LEDS
+const int blueLedPin = 5;
+const int greenLedPin = 6;
+const int redLedPin = 7;
+
+void setup() {
+  Serial.begin(9600);
+
+  //CONTROL
+  pinMode(startBtnPin, INPUT_PULLUP);
+  pinMode(stopBtnPin, INPUT_PULLUP);
+
+  //RELAY
+  pinMode(relay1Pin, OUTPUT);
+  digitalWrite(relay1Pin, HIGH); // relay off]
+
+  //STATUS LEDS
+  pinMode(blueLedPin, OUTPUT);
+  pinMode(greenLedPin, OUTPUT);
+  pinMode(redLedPin, OUTPUT);
+
+  digitalWrite(blueLedPin, HIGH);
+  digitalWrite(greenLedPin, HIGH);
+  digitalWrite(redLedPin, HIGH);
+
+}
+
+void loop() {
+  //-----------CONTROL---------------
+  startBtnState = digitalRead(startBtnPin);
+  stopBtnState = digitalRead(stopBtnPin);
+
+  //Start Condition
+  if(startBtnState == LOW && batteryHealthy == true){
+    starlinkCommand = true;
+  }
+  if(stopBtnState == LOW){
+    starlinkCommand = false;
+  }
+  if(batteryHealthy == false){
+    starlinkCommand =  false;
+  }
+
+  //RELAY
+  if(batteryHealthy == true && starlinkCommand == true){
+    digitalWrite(relay1Pin, LOW);
+  }
+  else{
+    digitalWrite(relay1Pin, HIGH);
+  }
+
+
+  //-----------SENSING---------------
+  int batteryReading = analogRead(batteryVin);
+
+  float pinVoltage = batteryReading * (adcReference/1023.0); 
+  float batteryVoltage =  pinVoltage * dividerRatio;
+
+  if(batteryVoltage < lowVoltageCutoff){
+    batteryHealthy = false;
+  }
+  if(batteryVoltage > recoveryVoltage){
+    batteryHealthy = true;
+  }
+
+  //-----------STATUS---------------
+
+  if(batteryHealthy == false){
+    digitalWrite(redLedPin, LOW);
+    digitalWrite(blueLedPin, HIGH);
+    digitalWrite(greenLedPin, HIGH);
+  }
+  else if(batteryVoltage > lowVoltageCutoff && batteryVoltage < recoveryVoltage){
+    digitalWrite(blueLedPin, HIGH);
+    digitalWrite(greenLedPin, LOW);
+    digitalWrite(redLedPin, LOW);
+  }
+  else if(starlinkCommand == true){
+    digitalWrite(redLedPin, HIGH);
+    digitalWrite(blueLedPin, HIGH);
+    digitalWrite(greenLedPin, LOW);
+  }
+  else{
+    digitalWrite(redLedPin, HIGH);
+    digitalWrite(blueLedPin, LOW);
+    digitalWrite(greenLedPin, HIGH);
+  }
+
+
+
+  //DEBUG
+  //Serial.print("Battery Voltage");
+  //Serial.print(batteryVoltage);
+
+  //Serial.print("  Healthy  ");
+  //Serial.println(batteryHealthy);
+
+  //delay(1000);
+}
